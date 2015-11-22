@@ -688,26 +688,22 @@ function getRequestParameters() {
 function sendTranslationRequest(source, target, text, requestParams, onSuccess, onAlways) {
 
     // Use GET for short requests and POST for long requests
-    var textLength = encodeURIComponent(text).length;
-
-    // TODO: also consider 'header' value which can be quite long sometimes
-
-    var requestFunction = textLength < 550 ?
-        $.get : $.post;
-
-    var requestMethod = textLength < 550 ?
-        "GET" : "POST";
+    var encodedText = encodeURIComponent(text)
+    var textLength = encodedText.length;
 
     var uri = parseURI(requestParams.url + '?' + requestParams.query);
 
     var http = require('http');
     var options = {
       host: uri.host,
+      // host: 'localhost',
+      // port: 8080,
       path: uri.relative, // path + query
       // port: uri.port,
-      method: requestMethod,
+      method: requestParams.method,
       headers: {
-        'Referer': 'https://translate.google.com',
+        'Origin': 'http://translate.google.com',
+        'Referer': 'http://translate.google.com',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36'
       }
     };
@@ -723,7 +719,17 @@ function sendTranslationRequest(source, target, text, requestParams, onSuccess, 
       });
     }
 
+    if (requestParams.method == 'post') {
+      options.headers['Content-Length'] = textLength;
+      options.headers['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+    }
+
     var request = http.request(options, callback);
+    request.on('error', function(err) {
+      console.log(err);
+    });
+    if (requestParams.method == 'post')
+      request.write('q=' + encodedText);
     request.end();
 }
 
@@ -758,19 +764,3 @@ parseURI.options = {
 		loose:  /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
 	}
 };
-
-function sendHTTPRequest(url, method, callback) {
-  var http = require('http');
-  var parsedURL = parseURI(url);
-  var options = {
-    host: parsedURL.host,
-    path: parsedURL.path,
-    port: parsedURL.port,
-    method: method, // GET, POST, etc.
-    headers: {
-      'Referer': 'www.example.com'
-    }
-  };
-  var request = http.request(options, callback);
-  request.end();
-}
