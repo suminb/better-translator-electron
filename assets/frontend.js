@@ -1,5 +1,8 @@
 //const URL_PREFIX = 'http://better-translator.com'
-const URL_PREFIX = 'http://localhost:8001'
+const URL_PREFIX = 'http://localhost:8001';
+const GA_URL = 'http://www.google-analytics.com/collect';
+const GA_TRAKING_ID = 'UA-346833-18';
+const GA_CLIENT_ID = 'd90e0340-e056-4171-8ad9-b0d6fdcdf7e8';
 
 // The primary namespace for our app
 var frontend = {};
@@ -565,7 +568,7 @@ window.onload = function() {
       frontend.model.set('targetLanguage', 'ko');
     });
 
-
+    $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'pageview', dp: '/client/electron', dt: '더 나은 번역기'});
 };
 
 function performTranslation(event) {
@@ -584,6 +587,9 @@ function performTranslation(event) {
   else {
     performNormalTranslation(source, target, text);
   }
+
+  $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
+                  ec: 'api', ea: 'translate', el: 'label'});
 
   return false;
 }
