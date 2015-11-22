@@ -1,28 +1,29 @@
 {
-  "name": "electron-quick-start",
-  "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "name": "better-translator-electron",
+  "version": "0.1.0",
+  "description": "A native client for Better Translator",
   "main": "./assets/main.js",
   "scripts": {
     "start": "electron ./assets/main.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/atom/electron-quick-start.git"
+    "url": "git+https://github.com/suminb/better-translator-electron.git"
   },
   "keywords": [
-    "Electron",
-    "quick",
-    "start",
-    "tutorial"
+    "Google",
+    "better",
+    "translator",
+    "translation",
+    "translate"
   ],
-  "author": "GitHub",
-  "license": "MIT",
+  "author": "Sumin Byeon",
+  "license": "BSD",
   "bugs": {
-    "url": "https://github.com/atom/electron-quick-start/issues"
+    "url": "https://github.com/suminb/better-translator-electron/issues"
   },
-  "homepage": "https://github.com/atom/electron-quick-start#readme",
+  "homepage": "https://github.com/suminb/better-translator-electron#readme",
   "devDependencies": {
-    "electron-prebuilt": "^0.34.0"
+    "electron-prebuilt": "^0.35.1"
   }
 }
