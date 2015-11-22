@@ -1,28 +1,12 @@
 // The primary namespace for our app
 var frontend = {};
 
-// var rivets = require('rivets');
-// var Backbone = require('backbone');
-// var Epoxy = require('epoxy');
-
-var AppView = Backbone.View.extend({
-  // el - stands for element. Every view has a element associate in with HTML
-  //      content will be rendered.
-  el: '#source-text',
-  // It's the first function called when this view it's instantiated.
-  initialize: function(){
-    this.render();
-  },
-  // $el - it's a cached jQuery object (el), in which you can use jQuery functions
-  //       to push content. Like the Hello World in this case.
-  render: function(){
-    this.$el.val("Hello World");
-  }
-});
-
 var BindingView = Backbone.Epoxy.View.extend({
   el: '#translation-form',
   bindings: {
+    "select[name=sl]": "value:sourceLanguage,options:languages",
+    "select[name=il]": "value:intermediateLanguage,options:intermediateLanguages",
+    "select[name=tl]": "value:targetLanguage,options:languages",
     "#source-text": "value:sourceText,events:['keyup']",
     "#target-text": "text:targetText"
   }
@@ -30,10 +14,18 @@ var BindingView = Backbone.Epoxy.View.extend({
 
 var Model = Backbone.Model.extend({
   defaults: {
+    languages: [],
+    intermediateLanguages: [
+      {label:'없음', value:''},
+      {label:'일본어', value:'ja'},
+      {label:'러시아어', value:'ru'}
+    ],
     sourceLanguage: 'en',
+    intermediateLanguage: '',
     targetLanguage: 'ko',
     sourceText: '',
-    targetText: ''
+    targetText: '',
+    raw: null
   }
 });
 
@@ -248,39 +240,9 @@ var state = {
 
             $("#result").html(extractSentences(this.result));
 
-            // var resultDiv = $("#result");
-            // var sourceText = this.result[0][0][1];
-
-            // $(this.result[5]).each(function(i, v) {
-            //     console.log(v);
-
-            //     var targetCorpus = v[2][0][0];
-            //     var sourceRanges = v[3];
-
-            //     $(sourceRanges).each(function(i, v) {
-            //         var sourceCorpus = sourceText.substring(v[0], v[1]);
-            //         console.log(sourceCorpus);
-            //     });
-
-            //     var corpusSpan = $("<span></span>")
-            //         .addClass("corpus")
-            //         .text(targetCorpus);
-
-            //     resultDiv.append(corpusSpan);
-            //     resultDiv.append(" ");
-            // });
         }
     },
 
-    /**
-     * Updates state based on the values of the UI controls
-     */
-    update: function() {
-        this.source = $("select[name=sl]").val();
-        this.intermediate = $("select[name=il]").val();
-        this.target = $("select[name=tl]").val();
-        this.text = $("#text").val();
-    },
 
     serialize: function() {
         this.update();
@@ -294,10 +256,6 @@ var state = {
         };
     }
 };
-
-function msie() {
-    return $('html').is('.ie6, .ie7, .ie8');
-}
 
 /**
  * Parsing a URL query string
@@ -339,30 +297,9 @@ function resizeTextarea(t) {
     if (b > t.rows) t.rows = b;
 }
 
-function buildTranslateURL(sl, tl, text, method) {
-    var url = "http://translate.google.com/translate_a/single";
-
-    // Some extra values that Google Translate sends to its server
-    var extra = "dt=bd&dt=ex&dt=ld&dt=md&dt=qca&dt=rw&dt=rm&dt=ss&dt=t&dt=at";
-
-    // 'tk' seems to be the length of the source text
-    extra += "&tk=" + text.length;
-
-    // Not sure what these values are but adding them regardless...
-    extra += "&ssel=0&tsel=3";
-
-    if (method.toLowerCase() == 'get') {
-        return sprintf("%s?client=t&sl=%s&tl=%s&%s&q=%s", url, sl, tl, extra,
-            encodeURIComponent(text));
-    }
-    else if (method.toLowerCase() == 'post') {
-        return sprintf("%s?client=t&sl=%s&tl=%s&%s", url, sl, tl, extra);
-    }
-    else {
-        throw "Unsupported method";
-    }
-}
-
+/**
+ * Extracts sentences from the Google Translate result
+ */
 function extractSentences(raw) {
     return "".concat(
             $.map(raw[0], (function(v) { return v[0]; }))
@@ -425,10 +362,6 @@ function _performTranslation() {
     else if (state.text == null || state.text == "") {
          // TODO: Give some warning
     }
-    else if (encodeURIComponent(state.text).length > 8000) {
-        displayError("Text is too long.",
-            "For more detail, please refer <a href=\"/longtext\">this page</a>.");
-    }
     else {
         // translates if the source language and the target language are not
         // identical
@@ -470,9 +403,6 @@ function _performTranslation() {
                 onSuccess(state.target), onAlways);
         }
 
-//        if ($.cookie("locale") == "ko" && state.text.length < 60) {
-//            showNaverEndic(state.text);
-//        }
     }
 
     return false;
@@ -575,10 +505,6 @@ function enableControls(state) {
     }
 }
 
-function hideAuxInfo() {
-    $("#aux-naver-endic").hide();
-}
-
 function renderStatus(statusText) {
   document.getElementById('status').textContent = statusText;
 }
@@ -613,7 +539,7 @@ window.onload = function() {
             hashChanged(window.location.hash ? window.location.hash : "");
         }
     }
-    state.invalidateUI();
+
     $("#source-text, #target-text").autoResize({
         // On resize:
         onResize: function() {
@@ -636,9 +562,18 @@ window.onload = function() {
     })
     .trigger("change");
 
-    //frontend.appView = new AppView();
     frontend.model = new Model();
     frontend.bindingView = new BindingView({model: frontend.model});
+
+    // Dynamically set the available languages
+    $.get('http://localhost:8001/api/v1.0/languages?locale=ko', function(response) {
+      var languages = $.map(response, function(value, key) {
+        return {label: value, value: key};
+      });
+      frontend.model.set('languages', languages);
+    });
+
+
 };
 window.onpopstate = function(event) {
     if (event.state != null) {
@@ -660,11 +595,6 @@ function getRequestParameters() {
   $.get('http://localhost:8001/api/v1.3/params',
     {'text':frontend.model.get('sourceText'), 'source':'en', 'target':'ko'},
     function(response) {
-      // console.log(response.headers);
-      // console.log(response.query);
-      // console.log(response.url);
-
-      // frontend.model.set('targetText', '번역된 텍스트 예제');
       sendTranslationRequest(
         frontend.model.get('sourceLanguage'),
         frontend.model.get('targetLanguage'),
@@ -709,13 +639,15 @@ function sendTranslationRequest(source, target, text, requestParams, onSuccess, 
     };
 
     var callback = function(response) {
-      var str = ''
+      var buf = ''
       response.on('data', function (chunk) {
-        str += chunk;
+        buf += chunk;
       });
 
       response.on('end', function () {
-        console.log(str);
+        // FIXME: Potential security issues
+        frontend.model.set('raw', eval(buf));
+        frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
       });
     }
 
@@ -735,7 +667,7 @@ function sendTranslationRequest(source, target, text, requestParams, onSuccess, 
 
 
 /**
- * http://blog.stevenlevithan.com/archives/parseuri
+ * Copied from http://blog.stevenlevithan.com/archives/parseuri
  */
 function parseURI (str) {
 	var	o   = parseURI.options,
