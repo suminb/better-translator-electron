@@ -27,6 +27,7 @@ app.on('ready', function() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
     width: 1000, height: 600,
+    icon: './assets/app.ico',
     'web-preferences': {'web-security': false}
   });
 
