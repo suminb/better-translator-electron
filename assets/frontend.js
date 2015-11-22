@@ -1,3 +1,5 @@
+const URL_PREFIX = 'http://localhost:8001'
+
 // The primary namespace for our app
 var frontend = {};
 
@@ -26,6 +28,10 @@ var Model = Backbone.Model.extend({
     sourceText: '',
     targetText: '',
     raw: null
+  },
+  hasIntermediateLanguage: function() {
+    return this.get('intermediateLanguage') != null &&
+           this.get('intermediateLanguage') != '';
   }
 });
 
@@ -242,19 +248,6 @@ var state = {
 
         }
     },
-
-
-    serialize: function() {
-        this.update();
-
-        return {
-            source: this.source,
-            intermediate: this.intermediate,
-            target: this.target,
-            text: this.text,
-            result: this.result
-        };
-    }
 };
 
 /**
@@ -301,9 +294,7 @@ function resizeTextarea(t) {
  * Extracts sentences from the Google Translate result
  */
 function extractSentences(raw) {
-    return "".concat(
-            $.map(raw[0], (function(v) { return v[0]; }))
-        );
+    return $.map(raw[0], (function(v) { return v[0]; })).join('');
 }
 
 function _performTranslation() {
@@ -406,10 +397,6 @@ function _performTranslation() {
     }
 
     return false;
-}
-
-function uploadRawCorpora(source, target, raw) {
-    $.post("/corpus/raw", {sl:source, tl:target, raw:raw});
 }
 
 function showCaptcha(body) {
@@ -540,6 +527,8 @@ window.onload = function() {
         }
     }
 
+    $('#translation-form').bind('submit', performTranslation);
+
     $("#source-text, #target-text").autoResize({
         // On resize:
         onResize: function() {
@@ -577,14 +566,22 @@ window.onload = function() {
 
 
 };
-window.onpopstate = function(event) {
-    if (event.state != null) {
-        state.initWithState(event.state);
-    }
-};
 
-function performTranslation() {
-  getRequestParameters();
+function performTranslation(event) {
+  if (event != null)
+    event.preventDefault();
+
+  var source = frontend.model.get('sourceLanguage');
+  var intermediate = frontend.model.get('intermediateLanguage');
+  var target = frontend.model.get('targetLanguage');
+  var text = frontend.model.get('sourceText');
+
+  if (frontend.model.hasIntermediateLanguage()) {
+    performBetterTranslation(source, intermediate, target, text);
+  }
+  else {
+    performNormalTranslation(source, target, text);
+  }
 
   return false;
 }
@@ -592,17 +589,72 @@ function performTranslation() {
 /**
  * Sends a request to the BT server in order to get all request parameters to
  * be sent to the Google Translate server
+ * @param {string} source - Source language code
+ * @param {string} target - Target language code
+ * @param {string} test - Source text
  */
-function getRequestParameters() {
-  $.get('http://localhost:8001/api/v1.3/params',
-    {'text':frontend.model.get('sourceText'), 'source':'en', 'target':'ko'},
+function performNormalTranslation(source, target, text) {
+  var onSuccess = function(result) {
+    // FIXME: Potential security issues
+    frontend.model.set('raw', eval(result));
+    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+  };
+
+  $.get(URL_PREFIX + '/api/v1.3/params',
+    {'text':text, 'source':source, 'target':target},
     function(response) {
       sendTranslationRequest(
-        frontend.model.get('sourceLanguage'),
-        frontend.model.get('targetLanguage'),
-        frontend.model.get('sourceText'),
+        source, target, text,
         response, // request parameters
-        null,
+        onSuccess,
+        null
+      );
+  });
+}
+/**
+ * @param {string} source - Source language code
+ * @param {string} intermediate - Intermediate language code
+ * @param {string} target - Target language code
+ * @param {string} test - Source text
+ */
+function performBetterTranslation(source, intermediate, target, text) {
+  var onSuccess1 = function(result) {
+    // FIXME: Potential security issues
+    frontend.model.set('raw', eval(result));
+    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+
+    text = frontend.model.get('targetText');
+
+    var delay = 500 + Math.random() * 1000;
+    setTimeout(sendSubsequentRequest, delay);
+  };
+
+  function sendSubsequentRequest() {
+    $.get(URL_PREFIX + '/api/v1.3/params',
+      {'text':text, 'source':intermediate, 'target':target},
+      function(response) {
+        sendTranslationRequest(
+          intermediate, target, text,
+          response, // request parameters
+          onSuccess2,
+          null
+        );
+      });
+  }
+
+  var onSuccess2 = function(result) {
+    // FIXME: Potential security issues
+    frontend.model.set('raw', eval(result));
+    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+  };
+
+  $.get(URL_PREFIX + '/api/v1.3/params',
+    {'text':text, 'source':source, 'target':intermediate},
+    function(response) {
+      sendTranslationRequest(
+        source, intermediate, text,
+        response, // request parameters
+        onSuccess1,
         null
       );
   });
@@ -647,9 +699,8 @@ function sendTranslationRequest(source, target, text, requestParams, onSuccess, 
       });
 
       response.on('end', function () {
-        // FIXME: Potential security issues
-        frontend.model.set('raw', eval(buf));
-        frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+        console.log(buf);
+        onSuccess(buf);
       });
     }
 
