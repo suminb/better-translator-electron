@@ -23,7 +23,7 @@ var Model = Backbone.Model.extend({
       {label:'러시아어', value:'ru'}
     ],
     sourceLanguage: null,
-    intermediateLanguage: '',
+    intermediateLanguage: 'ja',
     targetLanguage: null,
     sourceText: '',
     targetText: '',
@@ -576,6 +576,7 @@ function performTranslation(event) {
   var target = frontend.model.get('targetLanguage');
   var text = frontend.model.get('sourceText');
 
+  $('#progress-message').show();
   if (frontend.model.hasIntermediateLanguage()) {
     performBetterTranslation(source, intermediate, target, text);
   }
@@ -600,6 +601,10 @@ function performNormalTranslation(source, target, text) {
     frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
   };
 
+  var onFinish = function() {
+    $('#progress-message').hide();
+  }
+
   $.get(URL_PREFIX + '/api/v1.3/params',
     {'text':text, 'source':source, 'target':target},
     function(response) {
@@ -607,7 +612,7 @@ function performNormalTranslation(source, target, text) {
         source, target, text,
         response, // request parameters
         onSuccess,
-        null
+        onFinish
       );
   });
 }
@@ -629,7 +634,7 @@ function performBetterTranslation(source, intermediate, target, text) {
     setTimeout(sendSubsequentRequest, delay);
   };
 
-  function sendSubsequentRequest() {
+  var sendSubsequentRequest = function() {
     $.get(URL_PREFIX + '/api/v1.3/params',
       {'text':text, 'source':intermediate, 'target':target},
       function(response) {
@@ -637,7 +642,7 @@ function performBetterTranslation(source, intermediate, target, text) {
           intermediate, target, text,
           response, // request parameters
           onSuccess2,
-          null
+          onFinish
         );
       });
   }
@@ -647,6 +652,10 @@ function performBetterTranslation(source, intermediate, target, text) {
     frontend.model.set('raw', eval(result));
     frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
   };
+
+  var onFinish = function() {
+    $('#progress-message').hide();
+  }
 
   $.get(URL_PREFIX + '/api/v1.3/params',
     {'text':text, 'source':source, 'target':intermediate},
@@ -667,9 +676,9 @@ function performBetterTranslation(source, intermediate, target, text) {
  * @param {string} test - Source text
  * @param {object} requestParams
  * @param {function} onSuccess - A callback function that will be called on success
- * @param {function} onAlways - A callback function that will be called regardless of the result
+ * @param {function} onFinish - A callback function that will be called regardless of the result
  */
-function sendTranslationRequest(source, target, text, requestParams, onSuccess, onAlways) {
+function sendTranslationRequest(source, target, text, requestParams, onSuccess, onFinish) {
 
     // Use GET for short requests and POST for long requests
     var encodedText = encodeURIComponent(text)
@@ -680,10 +689,7 @@ function sendTranslationRequest(source, target, text, requestParams, onSuccess, 
     var http = require('http');
     var options = {
       host: uri.host,
-      // host: 'localhost',
-      // port: 8080,
       path: uri.relative, // path + query
-      // port: uri.port,
       method: requestParams.method,
       headers: {
         'Origin': 'http://translate.google.com',
@@ -700,7 +706,8 @@ function sendTranslationRequest(source, target, text, requestParams, onSuccess, 
 
       response.on('end', function () {
         console.log(buf);
-        onSuccess(buf);
+        if (onSuccess != null) onSuccess(buf);
+        if (onFinish != null) onFinish();
       });
     }
 
@@ -712,9 +719,11 @@ function sendTranslationRequest(source, target, text, requestParams, onSuccess, 
     var request = http.request(options, callback);
     request.on('error', function(err) {
       console.log(err);
+      if (onFinish != null) onFinish();
     });
-    if (requestParams.method == 'post')
+    if (requestParams.method == 'post') {
       request.write('q=' + encodedText);
+    }
     request.end();
 }
 
