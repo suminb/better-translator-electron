@@ -1,4 +1,5 @@
-const URL_PREFIX = 'http://better-translator.com'
+//const URL_PREFIX = 'http://better-translator.com'
+const URL_PREFIX = 'http://localhost:8001'
 
 // The primary namespace for our app
 var frontend = {};
@@ -605,7 +606,7 @@ function performNormalTranslation(source, target, text) {
     $('#progress-message').hide();
   }
 
-  $.get(URL_PREFIX + '/api/v1.3/params',
+  $.post(URL_PREFIX + '/api/v1.3/params',
     {'text':text, 'source':source, 'target':target},
     function(response) {
       sendTranslationRequest(
@@ -635,7 +636,7 @@ function performBetterTranslation(source, intermediate, target, text) {
   };
 
   var sendSubsequentRequest = function() {
-    $.get(URL_PREFIX + '/api/v1.3/params',
+    $.post(URL_PREFIX + '/api/v1.3/params',
       {'text':text, 'source':intermediate, 'target':target},
       function(response) {
         sendTranslationRequest(
@@ -657,7 +658,7 @@ function performBetterTranslation(source, intermediate, target, text) {
     $('#progress-message').hide();
   }
 
-  $.get(URL_PREFIX + '/api/v1.3/params',
+  $.post(URL_PREFIX + '/api/v1.3/params',
     {'text':text, 'source':source, 'target':intermediate},
     function(response) {
       sendTranslationRequest(
