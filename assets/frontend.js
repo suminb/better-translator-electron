@@ -20,9 +20,9 @@ var Model = Backbone.Model.extend({
       {label:'일본어', value:'ja'},
       {label:'러시아어', value:'ru'}
     ],
-    sourceLanguage: 'en',
+    sourceLanguage: null,
     intermediateLanguage: '',
-    targetLanguage: 'ko',
+    targetLanguage: null,
     sourceText: '',
     targetText: '',
     raw: null
@@ -571,6 +571,8 @@ window.onload = function() {
         return {label: value, value: key};
       });
       frontend.model.set('languages', languages);
+      frontend.model.set('sourceLanguage', 'en');
+      frontend.model.set('targetLanguage', 'ko');
     });
 
 
