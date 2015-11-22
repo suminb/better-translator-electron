@@ -1,4 +1,4 @@
-const URL_PREFIX = 'http://localhost:8001'
+const URL_PREFIX = 'http://better-translator.com'
 
 // The primary namespace for our app
 var frontend = {};
@@ -555,7 +555,7 @@ window.onload = function() {
     frontend.bindingView = new BindingView({model: frontend.model});
 
     // Dynamically set the available languages
-    $.get('http://localhost:8001/api/v1.0/languages?locale=ko', function(response) {
+    $.get(URL_PREFIX + '/api/v1.0/languages?locale=ko', function(response) {
       var languages = $.map(response, function(value, key) {
         return {label: value, value: key};
       });
