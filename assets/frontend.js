@@ -529,7 +529,7 @@ window.onload = function() {
 
     $('#translation-form').bind('submit', performTranslation);
 
-    $("#source-text, #target-text").autoResize({
+    $("textarea.source-text, div.target-text").autoResize({
         // On resize:
         onResize: function() {
             $(this).css({opacity:0.8});

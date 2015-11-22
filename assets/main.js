@@ -26,8 +26,13 @@ app.on('window-all-closed', function() {
 app.on('ready', function() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 800, height: 600,
+    width: 1000, height: 600,
     'web-preferences': {'web-security': false}
+  });
+
+  mainWindow.webContents.on('new-window', function(e, url) {
+    e.preventDefault();
+    require('shell').openExternal(url);
   });
 
   // and load the index.html of the app.
