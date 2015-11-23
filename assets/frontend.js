@@ -695,8 +695,10 @@ function performTranslation(event) {
     performNormalTranslation(source, target, text);
   }
 
+  var label = sprintf('sl=%s&il=%s&tl=%s', source, intermediate, target);
+  console.log(label);
   $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
-                  ec: 'api', ea: 'translate', el: 'label'});
+                  ec: 'api', ea: 'translate', el: label});
 
   return false;
 }
