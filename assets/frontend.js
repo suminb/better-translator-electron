@@ -4,6 +4,8 @@ const GA_URL = 'http://www.google-analytics.com/collect';
 const GA_TRAKING_ID = 'UA-346833-18';
 const GA_CLIENT_ID = 'd90e0340-e056-4171-8ad9-b0d6fdcdf7e8';
 
+const remote = require('electron').remote;
+
 // The primary namespace for our app
 var frontend = {};
 
@@ -38,7 +40,6 @@ var Model = Backbone.Model.extend({
            this.get('intermediateLanguage') != '';
   }
 });
-
 
 var examples = {
     en: [
@@ -501,6 +502,112 @@ function renderStatus(statusText) {
 }
 
 window.onload = function() {
+
+    const Menu = remote.Menu;
+    var menuTemplate = [
+      {
+        label: 'Edit',
+        submenu: [
+          {
+            label: 'Undo',
+            accelerator: 'CmdOrCtrl+Z',
+            role: 'undo'
+          },
+          {
+            label: 'Redo',
+            accelerator: 'Shift+CmdOrCtrl+Z',
+            role: 'redo'
+          },
+          {
+            type: 'separator'
+          },
+          {
+            label: 'Cut',
+            accelerator: 'CmdOrCtrl+X',
+            role: 'cut'
+          },
+          {
+            label: 'Copy',
+            accelerator: 'CmdOrCtrl+C',
+            role: 'copy'
+          },
+          {
+            label: 'Paste',
+            accelerator: 'CmdOrCtrl+V',
+            role: 'paste'
+          },
+          {
+            label: 'Select All',
+            accelerator: 'CmdOrCtrl+A',
+            role: 'selectall'
+          },
+        ]
+      }
+    ]
+    if (process.platform == 'darwin') {
+      // var name = remote.app.name;
+      var name = '더 나은 번역기';
+      menuTemplate.unshift({
+        label: name,
+        submenu: [
+          {
+            label: 'About ' + name,
+            role: 'about'
+          },
+          {
+            type: 'separator'
+          },
+          {
+            label: 'Services',
+            role: 'services',
+            submenu: []
+          },
+          {
+            type: 'separator'
+          },
+          {
+            label: 'Hide ' + name,
+            accelerator: 'Command+H',
+            role: 'hide'
+          },
+          {
+            label: 'Hide Others',
+            accelerator: 'Command+Shift+H',
+            role: 'hideothers'
+          },
+          {
+            label: 'Show All',
+            role: 'unhide'
+          },
+          {
+            type: 'separator'
+          },
+          {
+            label: 'Quit',
+            accelerator: 'Command+Q',
+            click: function() { remote.app.quit(); }
+          },
+        ]
+      });
+      // Window menu.
+      // menuTemplate[3].submenu.push(
+      //   {
+      //     type: 'separator'
+      //   },
+      //   {
+      //     label: 'Bring All to Front',
+      //     role: 'front'
+      //   }
+      // );
+    }
+    var menu = Menu.buildFromTemplate(menuTemplate);
+    Menu.setApplicationMenu(menu);
+
+    window.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      menu.popup(remote.getCurrentWindow());
+    }, false);
+
     // The following code was copied from
     // http://stackoverflow.com/questions/2161906/handle-url-anchor-change-event-in-js
     if ("onhashchange" in window) { // event supported?
