@@ -1,5 +1,5 @@
-//const URL_PREFIX = 'http://better-translator.com'
-const URL_PREFIX = 'http://localhost:8001';
+const URL_PREFIX = 'http://better-translator.com'
+//const URL_PREFIX = 'http://localhost:8001';
 const GA_URL = 'http://www.google-analytics.com/collect';
 const GA_TRAKING_ID = 'UA-346833-18';
 const GA_CLIENT_ID = 'd90e0340-e056-4171-8ad9-b0d6fdcdf7e8';
