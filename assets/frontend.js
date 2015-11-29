@@ -8,9 +8,6 @@ const remote = require('electron').remote;
 const LocalStorage = require('node-localstorage').LocalStorage;
 var localStorage = new LocalStorage('./preferences');
 
-// The primary namespace for our app
-var frontend = {};
-
 var BindingView = Backbone.Epoxy.View.extend({
   el: '#translation-form',
   bindings: {
@@ -406,17 +403,17 @@ window.onload = function() {
     })
     .trigger("change");
 
-    frontend.model = new Model();
-    frontend.bindingView = new BindingView({model: frontend.model});
+    model = new Model();
+    bindingView = new BindingView({model: model});
 
     // Dynamically set the available languages
     $.get(URL_PREFIX + '/api/v1.0/languages?locale=ko', function(response) {
       var languages = $.map(response, function(value, key) {
         return {label: value, value: key};
       });
-      frontend.model.set('languages', languages);
-      frontend.model.set('sourceLanguage', 'en');
-      frontend.model.set('targetLanguage', 'ko');
+      model.set('languages', languages);
+      model.set('sourceLanguage', 'en');
+      model.set('targetLanguage', 'ko');
     });
 
     $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
@@ -427,13 +424,13 @@ function performTranslation(event) {
   if (event != null)
     event.preventDefault();
 
-  var source = frontend.model.get('sourceLanguage');
-  var intermediate = frontend.model.get('intermediateLanguage');
-  var target = frontend.model.get('targetLanguage');
-  var text = frontend.model.get('sourceText');
+  var source = model.get('sourceLanguage');
+  var intermediate = model.get('intermediateLanguage');
+  var target = model.get('targetLanguage');
+  var text = model.get('sourceText');
 
   $('#progress-message').show();
-  if (frontend.model.hasIntermediateLanguage()) {
+  if (model.hasIntermediateLanguage()) {
     performBetterTranslation(source, intermediate, target, text);
   }
   else {
@@ -458,8 +455,8 @@ function performTranslation(event) {
 function performNormalTranslation(source, target, text) {
   var onSuccess = function(result) {
     // FIXME: Potential security issues
-    frontend.model.set('raw', eval(result));
-    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+    model.set('raw', eval(result));
+    model.set('targetText', extractSentences(model.get('raw')));
   };
 
   var onFinish = function() {
@@ -486,10 +483,10 @@ function performNormalTranslation(source, target, text) {
 function performBetterTranslation(source, intermediate, target, text) {
   var onSuccess1 = function(result) {
     // FIXME: Potential security issues
-    frontend.model.set('raw', eval(result));
-    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+    model.set('raw', eval(result));
+    model.set('targetText', extractSentences(model.get('raw')));
 
-    text = frontend.model.get('targetText');
+    text = model.get('targetText');
 
     var delay = 500 + Math.random() * 1000;
     setTimeout(sendSubsequentRequest, delay);
@@ -510,8 +507,8 @@ function performBetterTranslation(source, intermediate, target, text) {
 
   var onSuccess2 = function(result) {
     // FIXME: Potential security issues
-    frontend.model.set('raw', eval(result));
-    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+    model.set('raw', eval(result));
+    model.set('targetText', extractSentences(model.get('raw')));
   };
 
   var onFinish = function() {
