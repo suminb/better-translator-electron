@@ -5,6 +5,8 @@ const GA_TRAKING_ID = 'UA-346833-18';
 const GA_CLIENT_ID = 'd90e0340-e056-4171-8ad9-b0d6fdcdf7e8';
 
 const remote = require('electron').remote;
+const LocalStorage = require('node-localstorage').LocalStorage;
+var localStorage = new LocalStorage('./preferences');
 
 // The primary namespace for our app
 var frontend = {};
@@ -118,142 +120,6 @@ $.fn.enable = function() {
     return this.removeAttr("disabled");
 };
 
-
-var state = {
-    source: null, // source language
-    intermediate: null, // intermediate language
-    target: null, // target language
-    text: null,
-    result: null,
-
-    id: null,
-    requestId: null,
-    serial: null,
-    exampleIndex: 0,
-
-    pending: false,
-
-    setSource: function(v) {
-        this.source = v;
-        $("select[name=sl]").val(v);
-    },
-
-    setIntermediate: function(v) {
-        this.intermediate = v;
-        $("select[name=il]").val(v);
-    },
-
-    setTarget: function(v) {
-        this.target = v;
-        $("select[name=tl]").val(v);
-    },
-
-    setText: function(v) {
-        this.text = v;
-        $("#text").val(v);
-    },
-
-    setResult: function(v) {
-        //this.result = v;
-        $("#result").html(v);
-    },
-
-    selectSource: function(v) {
-        this.source = v;
-        this.setResult("");
-
-        $.cookie("source", v);
-    },
-
-    selectIntermediate: function(v) {
-        this.intermediate = v;
-        this.setResult("");
-
-        $.cookie("intermediate", v);
-    },
-
-    selectTarget: function(v) {
-        this.target = v;
-        this.setResult("");
-
-        $.cookie("target", v);
-    },
-
-    init: function() {
-        this.setSource(typeof $.cookie("source") != "undefined" ?
-            $.cookie("source") : "auto");
-        this.setIntermediate(typeof $.cookie("intermediate") != "undefined" ?
-            $.cookie("intermediate") : "ja");
-        this.setTarget(typeof $.cookie("target") != "undefined" ?
-            $.cookie("target") : "en");
-    },
-
-    initWithState: function(state) {
-        this.setSource(state.source);
-        this.setIntermediate(state.intermediate);
-        this.setTarget(state.target);
-        this.setText(state.text);
-        //this.setResult(state.result);
-    },
-
-    initWithParameters: function() {
-        this.setSource(getParameterByName("sl"));
-        this.setIntermediate(getParameterByName("il"));
-        this.setTarget(getParameterByName("tl"));
-        this.setText(getParameterByName("t"));
-    },
-
-    initWithTranslation: function(t) {
-        this.id = t.id;
-        this.requestId = t.request_id;
-        this.serial = t.serial;
-        this.source = t.source;
-        this.intermediate = t.intermediate; // FIXME: This is not implemented on the server side
-        this.target = t.target;
-        this.text = t.original_text;
-        //this.result = t.translated_text;
-    },
-
-    updateWithTranslation: function(t) {
-        // this.id = t.id;
-        // this.requestId = t.request_id;
-        // this.result = t.translated_text;
-
-        this.result = t;
-    },
-
-    swapLanguages: function() {
-        var source = this.source;
-        var target = this.target;
-
-        this.setSource(target);
-        this.setTarget(source);
-
-        $.cookie("source", target);
-        $.cookie("target", source);
-    },
-
-    // Sometimes we want to update the textarea, sometimes now.
-    // The 'updateText' parameter indicates whether we want to do that. However,
-    // this meant to be a temporary solution.
-    invalidateUI: function(updateText) {
-        updateText = typeof updateText !== 'undefined' ? updateText : true;
-
-        $("select[name=sl]").val(this.source);
-        $("select[name=il]").val(this.intermediate);
-        $("select[name=tl]").val(this.target);
-
-        if (updateText) {
-            $("#text").val(this.text);
-        }
-
-        if (this.result) {
-
-            $("#result").html(extractSentences(this.result));
-
-        }
-    },
-};
 
 /**
  * Parsing a URL query string
