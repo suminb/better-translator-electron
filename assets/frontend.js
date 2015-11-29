@@ -5,6 +5,17 @@ const GA_TRAKING_ID = 'UA-346833-18';
 const GA_CLIENT_ID = 'd90e0340-e056-4171-8ad9-b0d6fdcdf7e8';
 
 const remote = require('electron').remote;
+const config = require('./config.json');
+
+const rollbar = require('rollbar');
+rollbar.init(config.rollbar_access_token, {
+  environment: config.rollbar_environment,
+  endpoint: 'https://api.rollbar.com/api/1/'
+});
+rollbar.handleUncaughtExceptions(
+  config.rollbar_access_token,
+  {exitOnUncaughtException: false});
+
 const LocalStorage = require('node-localstorage').LocalStorage;
 var localStorage = new LocalStorage('./preferences');
 

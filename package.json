@@ -25,5 +25,8 @@
   "homepage": "https://github.com/suminb/better-translator-electron#readme",
   "devDependencies": {
     "electron-prebuilt": "^0.35.1"
+  },
+  "dependencies": {
+    "rollbar": "^0.5.10"
   }
 }
