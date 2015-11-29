@@ -16,7 +16,24 @@ var BindingView = Backbone.Epoxy.View.extend({
     "select[name=tl]": "value:targetLanguage,options:languages",
     "#source-text": "value:sourceText,events:['keyup']",
     "#target-text": "text:targetText"
-  }
+  },
+  events: {
+    'change select[name=sl]': 'onChangeSourceLanguage',
+    'change select[name=il]': 'onChangeIntermediateLanguage',
+    'change select[name=tl]': 'onChangeTargetLanguage'
+  },
+
+  // FIXME: The following event handlers could be further simplified
+  onChangeSourceLanguage: function(e) {
+    localStorage.setItem('sourceLanguage', model.get('sourceLanguage'));
+  },
+  onChangeIntermediateLanguage: function(e) {
+    localStorage.setItem('intermediateLanguage',
+                         model.get('intermediateLanguage'));
+  },
+  onChangeTargetLanguage: function(e) {
+    localStorage.setItem('targetLanguage', model.get('targetLanguage'));
+  },
 });
 
 var Model = Backbone.Model.extend({
@@ -28,7 +45,8 @@ var Model = Backbone.Model.extend({
       {label:'러시아어', value:'ru'}
     ],
     sourceLanguage: null,
-    intermediateLanguage: 'ja',
+    intermediateLanguage: localStorage.getItem('intermediateLanguage') ?
+      localStorage.getItem('intermediateLanguage') : 'ja',
     targetLanguage: null,
     sourceText: '',
     targetText: '',
@@ -411,9 +429,11 @@ window.onload = function() {
       var languages = $.map(response, function(value, key) {
         return {label: value, value: key};
       });
+      var sl = localStorage.getItem('sourceLanguage');
+      var tl = localStorage.getItem('targetLanguage');
       model.set('languages', languages);
-      model.set('sourceLanguage', 'en');
-      model.set('targetLanguage', 'ko');
+      model.set('sourceLanguage', sl ? sl : 'en');
+      model.set('targetLanguage', tl ? tl : 'ko');
     });
 
     $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
