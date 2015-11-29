@@ -168,108 +168,6 @@ function extractSentences(raw) {
     return $.map(raw[0], (function(v) { return v[0]; })).join('');
 }
 
-function _performTranslation() {
-
-    // Function currying
-    // Rationale: It would be almost impossible to get the value of 'target' unless it
-    // is declared as a global variable, which I do not believe it is a good practice in general
-    var onSuccess = function(target) {
-        return function(response) {
-            if (!response) {
-                displayError("sendTranslationRequest(): response body is null.",
-                    null);
-            }
-            else if (String(response).substring(0, 1) == "<") {
-                showCaptcha(response);
-            }
-            else {
-                // FIXME: Potential security vulnerability
-                // state.result = eval(response);
-                state.result = (new Function('return ' + response))();
-
-                // detected source language
-                var source = state.result[2];
-
-                uploadRawCorpora(source, target, JSON.stringify(state.result));
-            }
-        };
-    };
-
-    var onAlways = function() {
-        $("#progress-message").hide();
-        enableControls(true);
-
-        // This must be called after enableControls()
-        state.invalidateUI(false);
-
-        state.pending = false;
-    };
-
-    if (state.pending) {
-        // If there is any pending translation request,
-        // silently abort the request.
-        return false;
-    }
-
-    state.update();
-
-    if (state.source == state.target) {
-        // simply displays the original text when the source language and
-        // the target language are identical
-        state.setResult(state.text);
-    }
-    else if (state.source == "" || state.target == "") {
-         // TODO: Give some warning
-    }
-    else if (state.text == null || state.text == "") {
-         // TODO: Give some warning
-    }
-    else {
-        // translates if the source language and the target language are not
-        // identical
-
-        hideError();
-        $("#result").empty();
-        $("#progress-message").show();
-
-        enableControls(false);
-        hideAuxInfo();
-
-        state.pending = true;
-
-        if (state.intermediate) {
-
-            sendTranslationRequest(state.source, state.intermediate, state.text, function(response) {
-
-                onSuccess(state.intermediate)(response);
-
-                // Delay for a random interval (0.5-1.5 sec)
-                var delay = 500 + Math.random() * 1000;
-
-                setTimeout(function() {
-                    state.pending = true;
-                    sendTranslationRequest(state.intermediate, state.target,
-                        extractSentences(state.result),
-                        onSuccess(state.target),
-                        onAlways
-                    );
-                }, delay);
-
-            }, function() {
-                state.invalidateUI();
-                $("#progress-message").show();
-            });
-        }
-        else {
-            sendTranslationRequest(state.source, state.target, state.text,
-                onSuccess(state.target), onAlways);
-        }
-
-    }
-
-    return false;
-}
-
 function showCaptcha(body) {
 
     body = body.replace("/sorry/image",
@@ -316,12 +214,6 @@ function hashChanged(hash) {
     if (serial) {
         $("#request-permalink").hide();
 
-        // If a translation record is not newly loaded
-        if (serial != state.serial) {
-            fetchTranslation(serial);
-        }
-
-        state.serial = serial;
     }
     else if(getParameterByName("t")) {
         // Perform no action
@@ -467,9 +359,9 @@ window.onload = function() {
       // );
     }
     var menu = Menu.buildFromTemplate(menuTemplate);
-    Menu.setApplicationMenu(menu);
+    //Menu.setApplicationMenu(menu);
 
-    window.addEventListener('contextmenu', function (e) {
+    window.addEventListener('_contextmenu', function (e) {
       e.preventDefault();
       menu.popup(remote.getCurrentWindow());
     }, false);
@@ -490,19 +382,6 @@ window.onload = function() {
             }
         }, 250);
     }
-    if (state.id) {
-        //askForRating(state.requestId);
-    }
-    else {
-        if (getParameterByName("t")) {
-            state.initWithParameters();
-            //performTranslation();
-        }
-        else {
-            state.init();
-            hashChanged(window.location.hash ? window.location.hash : "");
-        }
-    }
 
     $('#translation-form').bind('submit', performTranslation);
 
@@ -521,7 +400,6 @@ window.onload = function() {
         extraSpace: 40
     })
     .keypress(function (event) {
-        state.text = $("#text").val();
         if (event.keyCode == 13) {
             performTranslation();
         }
@@ -541,7 +419,8 @@ window.onload = function() {
       frontend.model.set('targetLanguage', 'ko');
     });
 
-    $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'pageview', dp: '/client/electron', dt: '더 나은 번역기'});
+    $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
+                    ec: 'client', ea: 'onload'});
 };
 
 function performTranslation(event) {
@@ -564,7 +443,7 @@ function performTranslation(event) {
   var label = sprintf('sl=%s&il=%s&tl=%s', source, intermediate, target);
   console.log(label);
   $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
-                  ec: 'api', ea: 'translate', el: label});
+                  ec: 'client', ea: 'translate', el: label});
 
   return false;
 }
