@@ -37,6 +37,19 @@ exports.template = [
         role: 'selectall'
       },
     ]
+  },
+  {
+    label: 'View',
+    submenu: [
+      {
+        label: 'Reload',
+        accelerator: 'CmdOrCtrl+R',
+        click: function(item, focusedWindow) {
+          if (focusedWindow)
+            focusedWindow.reload();
+        }
+      }
+    ]
   }
 ]
 if (process.platform == 'darwin') {
@@ -84,4 +97,15 @@ if (process.platform == 'darwin') {
       },
     ]
   });
+  /*
+  exports.template[3].submenu.push(
+    {
+      type: 'separator'
+    },
+    {
+      label: 'Bring All to Front',
+      role: 'front'
+    }
+  );
+  */
 }

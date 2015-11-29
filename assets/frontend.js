@@ -279,19 +279,24 @@ const menu = require('./menu.js');
 
 window.onload = function() {
 
-    const Menu = remote.Menu;
-      // Window menu.
-      // menuTemplate[3].submenu.push(
-      //   {
-      //     type: 'separator'
-      //   },
-      //   {
-      //     label: 'Bring All to Front',
-      //     role: 'front'
-      //   }
-      // );
-    var _menu = Menu.buildFromTemplate(menu.template);
-    Menu.setApplicationMenu(_menu);
+    if (localStorage.getItem('debug')) {
+      menu.template[2].submenu.push({
+        label: 'Toggle Developer Tools',
+        accelerator: (function() {
+          if (process.platform == 'darwin')
+            return 'Alt+Command+I';
+          else
+            return 'Ctrl+Shift+I';
+        })(),
+        click: function(item, focusedWindow) {
+          if (focusedWindow)
+            focusedWindow.toggleDevTools();
+        }
+      });
+    }
+
+    var _menu = remote.Menu.buildFromTemplate(menu.template);
+    remote.Menu.setApplicationMenu(_menu);
 
     window.addEventListener('contextmenu', function (e) {
       e.preventDefault();
@@ -354,7 +359,7 @@ window.onload = function() {
     });
 
     $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
-                    ec: 'client', ea: 'onload'});
+                    ec: 'client', ea: 'onload', el: process.platform});
 };
 
 function performTranslation(event) {
