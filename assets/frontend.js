@@ -5,9 +5,19 @@ const GA_TRAKING_ID = 'UA-346833-18';
 const GA_CLIENT_ID = 'd90e0340-e056-4171-8ad9-b0d6fdcdf7e8';
 
 const remote = require('electron').remote;
+const config = require('./config.json');
 
-// The primary namespace for our app
-var frontend = {};
+const rollbar = require('rollbar');
+rollbar.init(config.rollbar_access_token, {
+  environment: config.rollbar_environment,
+  endpoint: 'https://api.rollbar.com/api/1/'
+});
+rollbar.handleUncaughtExceptions(
+  config.rollbar_access_token,
+  {exitOnUncaughtException: false});
+
+const LocalStorage = require('node-localstorage').LocalStorage;
+var localStorage = new LocalStorage('./preferences');
 
 var BindingView = Backbone.Epoxy.View.extend({
   el: '#translation-form',
@@ -17,7 +27,24 @@ var BindingView = Backbone.Epoxy.View.extend({
     "select[name=tl]": "value:targetLanguage,options:languages",
     "#source-text": "value:sourceText,events:['keyup']",
     "#target-text": "text:targetText"
-  }
+  },
+  events: {
+    'change select[name=sl]': 'onChangeSourceLanguage',
+    'change select[name=il]': 'onChangeIntermediateLanguage',
+    'change select[name=tl]': 'onChangeTargetLanguage'
+  },
+
+  // FIXME: The following event handlers could be further simplified
+  onChangeSourceLanguage: function(e) {
+    localStorage.setItem('sourceLanguage', model.get('sourceLanguage'));
+  },
+  onChangeIntermediateLanguage: function(e) {
+    localStorage.setItem('intermediateLanguage',
+                         model.get('intermediateLanguage'));
+  },
+  onChangeTargetLanguage: function(e) {
+    localStorage.setItem('targetLanguage', model.get('targetLanguage'));
+  },
 });
 
 var Model = Backbone.Model.extend({
@@ -29,7 +56,8 @@ var Model = Backbone.Model.extend({
       {label:'러시아어', value:'ru'}
     ],
     sourceLanguage: null,
-    intermediateLanguage: 'ja',
+    intermediateLanguage: localStorage.getItem('intermediateLanguage') ?
+      localStorage.getItem('intermediateLanguage') : 'ja',
     targetLanguage: null,
     sourceText: '',
     targetText: '',
@@ -119,142 +147,6 @@ $.fn.enable = function() {
 };
 
 
-var state = {
-    source: null, // source language
-    intermediate: null, // intermediate language
-    target: null, // target language
-    text: null,
-    result: null,
-
-    id: null,
-    requestId: null,
-    serial: null,
-    exampleIndex: 0,
-
-    pending: false,
-
-    setSource: function(v) {
-        this.source = v;
-        $("select[name=sl]").val(v);
-    },
-
-    setIntermediate: function(v) {
-        this.intermediate = v;
-        $("select[name=il]").val(v);
-    },
-
-    setTarget: function(v) {
-        this.target = v;
-        $("select[name=tl]").val(v);
-    },
-
-    setText: function(v) {
-        this.text = v;
-        $("#text").val(v);
-    },
-
-    setResult: function(v) {
-        //this.result = v;
-        $("#result").html(v);
-    },
-
-    selectSource: function(v) {
-        this.source = v;
-        this.setResult("");
-
-        $.cookie("source", v);
-    },
-
-    selectIntermediate: function(v) {
-        this.intermediate = v;
-        this.setResult("");
-
-        $.cookie("intermediate", v);
-    },
-
-    selectTarget: function(v) {
-        this.target = v;
-        this.setResult("");
-
-        $.cookie("target", v);
-    },
-
-    init: function() {
-        this.setSource(typeof $.cookie("source") != "undefined" ?
-            $.cookie("source") : "auto");
-        this.setIntermediate(typeof $.cookie("intermediate") != "undefined" ?
-            $.cookie("intermediate") : "ja");
-        this.setTarget(typeof $.cookie("target") != "undefined" ?
-            $.cookie("target") : "en");
-    },
-
-    initWithState: function(state) {
-        this.setSource(state.source);
-        this.setIntermediate(state.intermediate);
-        this.setTarget(state.target);
-        this.setText(state.text);
-        //this.setResult(state.result);
-    },
-
-    initWithParameters: function() {
-        this.setSource(getParameterByName("sl"));
-        this.setIntermediate(getParameterByName("il"));
-        this.setTarget(getParameterByName("tl"));
-        this.setText(getParameterByName("t"));
-    },
-
-    initWithTranslation: function(t) {
-        this.id = t.id;
-        this.requestId = t.request_id;
-        this.serial = t.serial;
-        this.source = t.source;
-        this.intermediate = t.intermediate; // FIXME: This is not implemented on the server side
-        this.target = t.target;
-        this.text = t.original_text;
-        //this.result = t.translated_text;
-    },
-
-    updateWithTranslation: function(t) {
-        // this.id = t.id;
-        // this.requestId = t.request_id;
-        // this.result = t.translated_text;
-
-        this.result = t;
-    },
-
-    swapLanguages: function() {
-        var source = this.source;
-        var target = this.target;
-
-        this.setSource(target);
-        this.setTarget(source);
-
-        $.cookie("source", target);
-        $.cookie("target", source);
-    },
-
-    // Sometimes we want to update the textarea, sometimes now.
-    // The 'updateText' parameter indicates whether we want to do that. However,
-    // this meant to be a temporary solution.
-    invalidateUI: function(updateText) {
-        updateText = typeof updateText !== 'undefined' ? updateText : true;
-
-        $("select[name=sl]").val(this.source);
-        $("select[name=il]").val(this.intermediate);
-        $("select[name=tl]").val(this.target);
-
-        if (updateText) {
-            $("#text").val(this.text);
-        }
-
-        if (this.result) {
-
-            $("#result").html(extractSentences(this.result));
-
-        }
-    },
-};
-
 /**
  * Parsing a URL query string
  * http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values
@@ -300,108 +192,6 @@ function resizeTextarea(t) {
  */
 function extractSentences(raw) {
     return $.map(raw[0], (function(v) { return v[0]; })).join('');
-}
-
-function _performTranslation() {
-
-    // Function currying
-    // Rationale: It would be almost impossible to get the value of 'target' unless it
-    // is declared as a global variable, which I do not believe it is a good practice in general
-    var onSuccess = function(target) {
-        return function(response) {
-            if (!response) {
-                displayError("sendTranslationRequest(): response body is null.",
-                    null);
-            }
-            else if (String(response).substring(0, 1) == "<") {
-                showCaptcha(response);
-            }
-            else {
-                // FIXME: Potential security vulnerability
-                // state.result = eval(response);
-                state.result = (new Function('return ' + response))();
-
-                // detected source language
-                var source = state.result[2];
-
-                uploadRawCorpora(source, target, JSON.stringify(state.result));
-            }
-        };
-    };
-
-    var onAlways = function() {
-        $("#progress-message").hide();
-        enableControls(true);
-
-        // This must be called after enableControls()
-        state.invalidateUI(false);
-
-        state.pending = false;
-    };
-
-    if (state.pending) {
-        // If there is any pending translation request,
-        // silently abort the request.
-        return false;
-    }
-
-    state.update();
-
-    if (state.source == state.target) {
-        // simply displays the original text when the source language and
-        // the target language are identical
-        state.setResult(state.text);
-    }
-    else if (state.source == "" || state.target == "") {
-         // TODO: Give some warning
-    }
-    else if (state.text == null || state.text == "") {
-         // TODO: Give some warning
-    }
-    else {
-        // translates if the source language and the target language are not
-        // identical
-
-        hideError();
-        $("#result").empty();
-        $("#progress-message").show();
-
-        enableControls(false);
-        hideAuxInfo();
-
-        state.pending = true;
-
-        if (state.intermediate) {
-
-            sendTranslationRequest(state.source, state.intermediate, state.text, function(response) {
-
-                onSuccess(state.intermediate)(response);
-
-                // Delay for a random interval (0.5-1.5 sec)
-                var delay = 500 + Math.random() * 1000;
-
-                setTimeout(function() {
-                    state.pending = true;
-                    sendTranslationRequest(state.intermediate, state.target,
-                        extractSentences(state.result),
-                        onSuccess(state.target),
-                        onAlways
-                    );
-                }, delay);
-
-            }, function() {
-                state.invalidateUI();
-                $("#progress-message").show();
-            });
-        }
-        else {
-            sendTranslationRequest(state.source, state.target, state.text,
-                onSuccess(state.target), onAlways);
-        }
-
-    }
-
-    return false;
 }
 
 function showCaptcha(body) {
@@ -450,12 +240,6 @@ function hashChanged(hash) {
     if (serial) {
         $("#request-permalink").hide();
 
-        // If a translation record is not newly loaded
-        if (serial != state.serial) {
-            fetchTranslation(serial);
-        }
-
-        state.serial = serial;
     }
     else if(getParameterByName("t")) {
         // Perform no action
@@ -501,111 +285,33 @@ function renderStatus(statusText) {
   document.getElementById('status').textContent = statusText;
 }
 
+
+const menu = require('./menu.js');
+
 window.onload = function() {
 
-    const Menu = remote.Menu;
-    var menuTemplate = [
-      {
-        label: 'Edit',
-        submenu: [
-          {
-            label: 'Undo',
-            accelerator: 'CmdOrCtrl+Z',
-            role: 'undo'
-          },
-          {
-            label: 'Redo',
-            accelerator: 'Shift+CmdOrCtrl+Z',
-            role: 'redo'
-          },
-          {
-            type: 'separator'
-          },
-          {
-            label: 'Cut',
-            accelerator: 'CmdOrCtrl+X',
-            role: 'cut'
-          },
-          {
-            label: 'Copy',
-            accelerator: 'CmdOrCtrl+C',
-            role: 'copy'
-          },
-          {
-            label: 'Paste',
-            accelerator: 'CmdOrCtrl+V',
-            role: 'paste'
-          },
-          {
-            label: 'Select All',
-            accelerator: 'CmdOrCtrl+A',
-            role: 'selectall'
-          },
-        ]
-      }
-    ]
-    if (process.platform == 'darwin') {
-      // var name = remote.app.name;
-      var name = '더 나은 번역기';
-      menuTemplate.unshift({
-        label: name,
-        submenu: [
-          {
-            label: 'About ' + name,
-            role: 'about'
-          },
-          {
-            type: 'separator'
-          },
-          {
-            label: 'Services',
-            role: 'services',
-            submenu: []
-          },
-          {
-            type: 'separator'
-          },
-          {
-            label: 'Hide ' + name,
-            accelerator: 'Command+H',
-            role: 'hide'
-          },
-          {
-            label: 'Hide Others',
-            accelerator: 'Command+Shift+H',
-            role: 'hideothers'
-          },
-          {
-            label: 'Show All',
-            role: 'unhide'
-          },
-          {
-            type: 'separator'
-          },
-          {
-            label: 'Quit',
-            accelerator: 'Command+Q',
-            click: function() { remote.app.quit(); }
-          },
-        ]
+    if (localStorage.getItem('debug')) {
+      menu.template[2].submenu.push({
+        label: 'Toggle Developer Tools',
+        accelerator: (function() {
+          if (process.platform == 'darwin')
+            return 'Alt+Command+I';
+          else
+            return 'Ctrl+Shift+I';
+        })(),
+        click: function(item, focusedWindow) {
+          if (focusedWindow)
+            focusedWindow.toggleDevTools();
+        }
       });
-      // Window menu.
-      // menuTemplate[3].submenu.push(
-      //   {
-      //     type: 'separator'
-      //   },
-      //   {
-      //     label: 'Bring All to Front',
-      //     role: 'front'
-      //   }
-      // );
     }
-    var menu = Menu.buildFromTemplate(menuTemplate);
-    Menu.setApplicationMenu(menu);
+
+    var _menu = remote.Menu.buildFromTemplate(menu.template);
+    remote.Menu.setApplicationMenu(_menu);
 
     window.addEventListener('contextmenu', function (e) {
       e.preventDefault();
-      menu.popup(remote.getCurrentWindow());
+      _menu.popup(remote.getCurrentWindow());
     }, false);
 
     // The following code was copied from
@@ -623,19 +329,6 @@ window.onload = function() {
                 hashChanged(storedHash);
             }
         }, 250);
-    }
-    if (state.id) {
-        //askForRating(state.requestId);
-    }
-    else {
-        if (getParameterByName("t")) {
-            state.initWithParameters();
-            //performTranslation();
-        }
-        else {
-            state.init();
-            hashChanged(window.location.hash ? window.location.hash : "");
-        }
     }
 
     $('#translation-form').bind('submit', performTranslation);
@@ -655,48 +348,52 @@ window.onload = function() {
         extraSpace: 40
     })
     .keypress(function (event) {
-        state.text = $("#text").val();
         if (event.keyCode == 13) {
             performTranslation();
         }
     })
     .trigger("change");
 
-    frontend.model = new Model();
-    frontend.bindingView = new BindingView({model: frontend.model});
+    model = new Model();
+    bindingView = new BindingView({model: model});
 
     // Dynamically set the available languages
     $.get(URL_PREFIX + '/api/v1.0/languages?locale=ko', function(response) {
       var languages = $.map(response, function(value, key) {
         return {label: value, value: key};
       });
-      frontend.model.set('languages', languages);
-      frontend.model.set('sourceLanguage', 'en');
-      frontend.model.set('targetLanguage', 'ko');
+      var sl = localStorage.getItem('sourceLanguage');
+      var tl = localStorage.getItem('targetLanguage');
+      model.set('languages', languages);
+      model.set('sourceLanguage', sl ? sl : 'en');
+      model.set('targetLanguage', tl ? tl : 'ko');
     });
 
-    $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'pageview', dp: '/client/electron', dt: '더 나은 번역기'});
+    $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
+                    ec: 'client', ea: 'onload', el: process.platform});
 };
 
 function performTranslation(event) {
   if (event != null)
     event.preventDefault();
 
-  var source = frontend.model.get('sourceLanguage');
-  var intermediate = frontend.model.get('intermediateLanguage');
-  var target = frontend.model.get('targetLanguage');
-  var text = frontend.model.get('sourceText');
+  var source = model.get('sourceLanguage');
+  var intermediate = model.get('intermediateLanguage');
+  var target = model.get('targetLanguage');
+  var text = model.get('sourceText');
 
   $('#progress-message').show();
-  if (frontend.model.hasIntermediateLanguage()) {
+  if (model.hasIntermediateLanguage()) {
     performBetterTranslation(source, intermediate, target, text);
   }
   else {
     performNormalTranslation(source, target, text);
   }
 
+  var label = sprintf('sl=%s&il=%s&tl=%s', source, intermediate, target);
+  console.log(label);
   $.post(GA_URL, {v: 1, tid: GA_TRAKING_ID, cid: GA_CLIENT_ID, t: 'event',
-                  ec: 'api', ea: 'translate', el: 'label'});
+                  ec: 'client', ea: 'translate', el: label});
 
   return false;
 }
@@ -711,8 +408,8 @@ function performTranslation(event) {
 function performNormalTranslation(source, target, text) {
   var onSuccess = function(result) {
     // FIXME: Potential security issues
-    frontend.model.set('raw', eval(result));
-    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+    model.set('raw', eval(result));
+    model.set('targetText', extractSentences(model.get('raw')));
   };
 
   var onFinish = function() {
@@ -739,10 +436,10 @@ function performNormalTranslation(source, target, text) {
 function performBetterTranslation(source, intermediate, target, text) {
   var onSuccess1 = function(result) {
     // FIXME: Potential security issues
-    frontend.model.set('raw', eval(result));
-    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+    model.set('raw', eval(result));
+    model.set('targetText', extractSentences(model.get('raw')));
 
-    text = frontend.model.get('targetText');
+    text = model.get('targetText');
 
     var delay = 500 + Math.random() * 1000;
     setTimeout(sendSubsequentRequest, delay);
@@ -763,8 +460,8 @@ function performBetterTranslation(source, intermediate, target, text) {
 
   var onSuccess2 = function(result) {
     // FIXME: Potential security issues
-    frontend.model.set('raw', eval(result));
-    frontend.model.set('targetText', extractSentences(frontend.model.get('raw')));
+    model.set('raw', eval(result));
+    model.set('targetText', extractSentences(model.get('raw')));
   };
 
   var onFinish = function() {
