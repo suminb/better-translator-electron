@@ -17,7 +17,10 @@ rollbar.handleUncaughtExceptions(
   {exitOnUncaughtException: false});
 
 const LocalStorage = require('node-localstorage').LocalStorage;
-var localStorage = new LocalStorage('./preferences');
+var appDataPath = process.env.APPDATA ||
+ (process.platform == 'darwin' ?
+    process.env.HOME + '/Library/Preference' : '/var/local');
+var localStorage = new LocalStorage(appDataPath);
 
 var BindingView = Backbone.Epoxy.View.extend({
   el: '#translation-form',
