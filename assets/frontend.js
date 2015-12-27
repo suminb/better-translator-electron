@@ -317,23 +317,6 @@ window.onload = function() {
       _menu.popup(remote.getCurrentWindow());
     }, false);
 
-    // The following code was copied from
-    // http://stackoverflow.com/questions/2161906/handle-url-anchor-change-event-in-js
-    if ("onhashchange" in window) { // event supported?
-        window.onhashchange = function () {
-            hashChanged(window.location.hash);
-        };
-    }
-    else { // event not supported:
-        var storedHash = window.location.hash;
-        window.setInterval(function () {
-            if (window.location.hash != storedHash) {
-                storedHash = window.location.hash;
-                hashChanged(storedHash);
-            }
-        }, 250);
-    }
-
     $('#translation-form').bind('submit', performTranslation);
 
     $("textarea.source-text, div.target-text").autoResize({
