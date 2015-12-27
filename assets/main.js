@@ -39,7 +39,7 @@ app.on('ready', function() {
   // and load the index.html of the app.
   mainWindow.loadURL('file://' + __dirname + '/index.html');
 
-  //mainWindow.loadUrl('http://better-translator.com');
+  //mainWindow.loadUrl('http://localhost:8001/desktop');
 
   // Open the DevTools.
   // mainWindow.openDevTools();

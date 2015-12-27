@@ -438,6 +438,10 @@ function performNormalTranslation(source, target, text) {
  */
 function performBetterTranslation(source, intermediate, target, text) {
   var onSuccess1 = function(result) {
+    if (String(result).substring(0, 1) == '<') {
+        showCaptcha(result);
+        return;
+    }
     // FIXME: Potential security issues
     model.set('raw', eval(result));
     model.set('targetText', extractSentences(model.get('raw')));
@@ -462,6 +466,10 @@ function performBetterTranslation(source, intermediate, target, text) {
   }
 
   var onSuccess2 = function(result) {
+    if (String(result).substring(0, 1) == '<') {
+        showCaptcha(result);
+        return;
+    }
     // FIXME: Potential security issues
     model.set('raw', eval(result));
     model.set('targetText', extractSentences(model.get('raw')));
@@ -572,3 +580,23 @@ parseURI.options = {
 		loose:  /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
 	}
 };
+
+
+/**
+ * Shows a captcha when Google returns it
+ */
+function showCaptcha(body) {
+  var startIndex = body.indexOf('</style>');
+  body = body.substring(startIndex + 8);
+
+  body = body.replace("/sorry/image",
+      "http://translate.google.com/sorry/image");
+
+  body = body.replace("action=\"CaptchaRedirect\"",
+      "action=\"http://sorry.google.com/sorry/CaptchaRedirect\"");
+
+  body = '<img src="http://www.google.com/images/errors/robot.png"/>' + body;
+
+  $("#captcha-dialog .modal-body").html(body);
+  $("#captcha-dialog").modal("show");
+}
