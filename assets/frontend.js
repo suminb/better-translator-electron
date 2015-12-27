@@ -1,11 +1,12 @@
-const URL_PREFIX = 'http://better-translator.com'
-//const URL_PREFIX = 'http://localhost:8001';
+//const URL_PREFIX = 'http://better-translator.com'
+const URL_PREFIX = 'http://localhost:8001';
 const GA_URL = 'http://www.google-analytics.com/collect';
 const GA_TRAKING_ID = 'UA-346833-18';
 const GA_CLIENT_ID = 'd90e0340-e056-4171-8ad9-b0d6fdcdf7e8';
 
 const remote = require('electron').remote;
 const config = require('./config.json');
+const packageinfo = require('../package.json');
 
 const rollbar = require('rollbar');
 rollbar.init(config.rollbar_access_token, {
@@ -194,7 +195,7 @@ function resizeTextarea(t) {
  * Extracts sentences from the Google Translate result
  */
 function extractSentences(raw) {
-    return $.map(raw[0], (function(v) { return v[0]; })).join('');
+    return $.map(raw.sentences, function(v) { return v.trans }).join('');
 }
 
 function showCaptcha(body) {
@@ -309,6 +310,15 @@ window.onload = function() {
       });
     }
 
+    $.get(URL_PREFIX + '/api/v1.3/version-check',
+        {version: packageinfo.version},
+        function(response) {
+          if (!response.is_latest) {
+            location.href = URL_PREFIX + '/download-clients?outdated=true';
+          }
+        }
+    );
+
     var _menu = remote.Menu.buildFromTemplate(menu.template);
     remote.Menu.setApplicationMenu(_menu);
 
@@ -393,8 +403,7 @@ function performTranslation(event) {
  */
 function performNormalTranslation(source, target, text) {
   var onSuccess = function(result) {
-    // FIXME: Potential security issues
-    model.set('raw', eval(result));
+    model.set('raw', JSON.parse(result));
     model.set('targetText', extractSentences(model.get('raw')));
   };
 
@@ -425,13 +434,12 @@ function performBetterTranslation(source, intermediate, target, text) {
         showCaptcha(result);
         return;
     }
-    // FIXME: Potential security issues
-    model.set('raw', eval(result));
+    model.set('raw', JSON.parse(result));
     model.set('targetText', extractSentences(model.get('raw')));
 
     text = model.get('targetText');
 
-    var delay = 500 + Math.random() * 1000;
+    var delay = 750 + Math.random() * 1000;
     setTimeout(sendSubsequentRequest, delay);
   };
 
@@ -453,8 +461,7 @@ function performBetterTranslation(source, intermediate, target, text) {
         showCaptcha(result);
         return;
     }
-    // FIXME: Potential security issues
-    model.set('raw', eval(result));
+    model.set('raw', JSON.parse(result));
     model.set('targetText', extractSentences(model.get('raw')));
   };
 
@@ -497,9 +504,7 @@ function sendTranslationRequest(source, target, text, requestParams, onSuccess, 
       path: uri.relative, // path + query
       method: requestParams.method,
       headers: {
-        'Origin': 'http://translate.google.com',
-        'Referer': 'http://translate.google.com',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36'
+        'User-Agent': requestParams.headers['User-Agent']
       }
     };
 
